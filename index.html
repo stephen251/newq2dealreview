@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scottish Deal Pulse — Q2 2026</title>
+<style>
+  :root{
+    --navy:#0b1f3a;
+    --navy-light:#13294d;
+    --accent:#c9a13b;
+    --bg:#f5f6f8;
+    --card:#ffffff;
+    --text:#1b2434;
+    --muted:#6b7280;
+    --border:#e3e6eb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:28px 24px 22px;
+  }
+  header .inner{
+    max-width:1100px;
+    margin:0 auto;
+  }
+  header h1{
+    margin:0 0 4px;
+    font-size:1.5rem;
+    font-weight:700;
+    letter-spacing:.2px;
+  }
+  header p{
+    margin:0;
+    color:#c7d0e0;
+    font-size:.92rem;
+  }
+  .controls{
+    max-width:1100px;
+    margin:-20px auto 0;
+    padding:0 24px;
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(11,31,58,0.08);
+    padding:18px;
+  }
+  .row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+  }
+  input[type="search"]{
+    flex:1 1 280px;
+    padding:10px 12px;
+    font-size:.95rem;
+    border:1px solid var(--border);
+    border-radius:6px;
+    outline:none;
+  }
+  input[type="search"]:focus{
+    border-color:var(--navy);
+  }
+  select{
+    padding:10px 12px;
+    font-size:.9rem;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:#fff;
+    color:var(--text);
+  }
+  .stats{
+    font-size:.85rem;
+    color:var(--muted);
+    margin-top:10px;
+  }
+  main{
+    max-width:1100px;
+    margin:18px auto 60px;
+    padding:0 24px;
+  }
+  .deal-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-left:4px solid var(--navy);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .deal-top{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:baseline;
+    margin-bottom:6px;
+  }
+  .deal-date{
+    font-size:.78rem;
+    font-weight:600;
+    color:var(--accent);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .sector-tag{
+    font-size:.72rem;
+    background:var(--navy-light);
+    color:#fff;
+    padding:3px 9px;
+    border-radius:12px;
+    white-space:nowrap;
+  }
+  .deal-title{
+    font-size:1rem;
+    font-weight:600;
+    margin:2px 0 8px;
+    line-height:1.35;
+  }
+  .deal-meta{
+    font-size:.85rem;
+    color:var(--text);
+    margin:3px 0;
+  }
+  .deal-meta strong{
+    color:var(--muted);
+    font-weight:600;
+  }
+  mark{
+    background:#fdeec0;
+    padding:0 2px;
+    border-radius:2px;
+  }
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    padding:50px 0;
+  }
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:.78rem;
+    padding:20px 0 40px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>Scottish Deal Pulse — Q2 2026</h1>
+    <p>Scottish M&amp;A and investment activity tracker · Scotsman Insider</p>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="panel">
+    <div class="row">
+      <input type="search" id="searchBox" placeholder="Search company, adviser, bidder, vendor…" autocomplete="off">
+      <select id="sectorFilter"><option value="">All sectors</option></select>
+      <select id="typeFilter"><option value="">All deal types</option></select>
+      <select id="sortOrder">
+        <option value="date-desc">Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="sector">Sector A–Z</option>
+      </select>
+    </div>
+    <div class="stats" id="statsLine"></div>
+  </div>
+</div>
+
+<main id="results"></main>
+
+<footer>Scottish Deal Pulse · Q2 2026 (Apr–Jun) · <span id="totalCount"></span> deals tracked</footer>
+
+<script>
+let DEALS = [];
+
+const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+
+function parseDate(str){
+  // formats: "1 May 2026" or "Jun 2026"
+  const parts = str.trim().split(' ');
+  if(parts.length === 3){
+    const [d,m,y] = parts;
+    return new Date(parseInt(y), monthMap[m] ?? 0, parseInt(d));
+  } else if(parts.length === 2){
+    const [m,y] = parts;
+    return new Date(parseInt(y), monthMap[m] ?? 0, 1);
+  }
+  return new Date(0);
+}
+
+function highlight(text, q){
+  if(!q || !text) return text || '';
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+  return text.replace(re, '<mark>$1</mark>');
+}
+
+function render(){
+  const q = document.getElementById('searchBox').value.trim();
+  const sector = document.getElementById('sectorFilter').value;
+  const type = document.getElementById('typeFilter').value;
+  const sort = document.getElementById('sortOrder').value;
+
+  let filtered = DEALS.filter(d => {
+    if(sector && d.sector !== sector) return false;
+    if(type && d.type !== type) return false;
+    if(!q) return true;
+    const haystack = [d.deal, d.advisers, d.bidder, d.vendor, d.sector].join(' ').toLowerCase();
+    return haystack.includes(q.toLowerCase());
+  });
+
+  filtered.sort((a,b) => {
+    if(sort === 'date-asc') return parseDate(a.date) - parseDate(b.date);
+    if(sort === 'sector') return a.sector.localeCompare(b.sector) || (parseDate(b.date) - parseDate(a.date));
+    return parseDate(b.date) - parseDate(a.date);
+  });
+
+  const results = document.getElementById('results');
+  document.getElementById('statsLine').textContent =
+    `Showing ${filtered.length} of ${DEALS.length} deals`;
+
+  if(filtered.length === 0){
+    results.innerHTML = '<div class="empty">No deals match your search.</div>';
+    return;
+  }
+
+  results.innerHTML = filtered.map(d => `
+    <div class="deal-card">
+      <div class="deal-top">
+        <span class="deal-date">${d.date}</span>
+        <span>
+          <span class="sector-tag">${d.sector}</span>
+          <span class="sector-tag" style="background:var(--accent);color:#1b2434;">${d.type}</span>
+        </span>
+      </div>
+      <div class="deal-title">${highlight(d.deal, q)}</div>
+      ${d.bidder ? `<div class="deal-meta"><strong>Bidder:</strong> ${highlight(d.bidder, q)}</div>` : ''}
+      ${d.vendor ? `<div class="deal-meta"><strong>Vendor:</strong> ${highlight(d.vendor, q)}</div>` : ''}
+      ${d.advisers ? `<div class="deal-meta"><strong>Advisers:</strong> ${highlight(d.advisers, q)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+fetch('deals.json')
+  .then(r => r.json())
+  .then(data => {
+    DEALS = data;
+    const sectors = [...new Set(DEALS.map(d => d.sector))].sort();
+    const sectorSelect = document.getElementById('sectorFilter');
+    sectors.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sectorSelect.appendChild(opt);
+    });
+    const types = [...new Set(DEALS.map(d => d.type))].sort();
+    const typeSelect = document.getElementById('typeFilter');
+    types.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      typeSelect.appendChild(opt);
+    });
+    document.getElementById('totalCount').textContent = DEALS.length;
+    render();
+  });
+
+document.getElementById('searchBox').addEventListener('input', render);
+document.getElementById('sectorFilter').addEventListener('change', render);
+document.getElementById('typeFilter').addEventListener('change', render);
+document.getElementById('sortOrder').addEventListener('change', render);
+</script>
+
+</body>
+</html>
